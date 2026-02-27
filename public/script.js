@@ -147,27 +147,55 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     // Populate multi-sheet checkboxes
     const checkboxContainer = document.getElementById('multiSheetCheckboxes');
     checkboxContainer.innerHTML = '';
-    allSheetNames.forEach(sheetName => {
-      if (sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)) { // Exclude teacher sheet and only show date-formatted sheets
-        const label = document.createElement('label');
-        label.style.display = 'flex';
-        label.style.alignItems = 'center';
-        label.style.gap = '8px';
-        label.style.cursor = 'pointer';
-        label.style.margin = '0';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = sheetName;
-        checkbox.style.cursor = 'pointer';
-        
-        const text = document.createElement('span');
-        text.textContent = sheetName;
-        
-        label.appendChild(checkbox);
-        label.appendChild(text);
-        checkboxContainer.appendChild(label);
-      }
+    const dateFormattedSheets = allSheetNames.filter(sheetName => 
+      sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)
+    );
+    
+    // Hide select all label if no date sheets
+    const selectAllLabel = document.getElementById('selectAllLabel');
+    selectAllLabel.style.display = dateFormattedSheets.length > 0 ? 'flex' : 'none';
+    
+    // Reset select all checkbox
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    selectAllCheckbox.checked = false;
+    
+    dateFormattedSheets.forEach(sheetName => {
+      const label = document.createElement('label');
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.gap = '8px';
+      label.style.cursor = 'pointer';
+      label.style.margin = '0';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = sheetName;
+      checkbox.className = 'sheet-checkbox';
+      checkbox.style.cursor = 'pointer';
+      
+      const text = document.createElement('span');
+      text.textContent = sheetName;
+      
+      label.appendChild(checkbox);
+      label.appendChild(text);
+      checkboxContainer.appendChild(label);
+    });
+    
+    // Add select all functionality
+    selectAllCheckbox.addEventListener('change', (e) => {
+      const allCheckboxes = document.querySelectorAll('.sheet-checkbox');
+      allCheckboxes.forEach(cb => cb.checked = e.target.checked);
+    });
+    
+    // Update select all checkbox state when individual checkboxes change
+    document.querySelectorAll('.sheet-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        const allCheckboxes = document.querySelectorAll('.sheet-checkbox');
+        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+        const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = someChecked && !allChecked;
+      });
     });
   } catch (error) {
     showError(error.message);

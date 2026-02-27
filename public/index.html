@@ -73,6 +73,10 @@
       <div id="multiTab" style="display: none;">
         <div class="form-group" style="margin-bottom: 16px;">
           <label>Select Sheets to Include:</label>
+          <label id="selectAllLabel" style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px; font-weight: bold;">
+            <input type="checkbox" id="selectAllCheckbox" style="cursor: pointer;">
+            <span>Select All</span>
+          </label>
           <div id="multiSheetCheckboxes" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 12px; border: 1px solid #ddd; border-radius: 6px;">
           </div>
           <button id="loadMultiSheetsBtn" class="btn-export" style="margin-top: 12px; width: 100%;">Load Selected Sheets</button>
