@@ -329,12 +329,13 @@ function loadDateScheduleSheet(sheetName) {
   
   // Extract data from A6 to H6 and down
   // Row 6 is index 5 (0-based), columns A-H are indices 0-7
+  // We'll skip columns B (Fag) and C (Hovedvakt) to show only A and D-H
   const tableData = [];
   
   if (data.length > 5) {
-    // Get headers from row 6 (A6 to H6)
+    // Get headers from row 6 (A6 to H6), but skip B and C
     const headerRow = data[5];
-    const headers = headerRow.slice(0, 8); // A6 to H6 (indices 0-7)
+    const headers = headerRow.slice(0, 1).concat(headerRow.slice(3, 8)); // A + D-H
     tableData.push(headers);
     
     // Get data rows starting from row 7
@@ -348,8 +349,8 @@ function loadDateScheduleSheet(sheetName) {
       if (hasContent) {
         // Found content, reset empty row counter
         emptyRowCount = 0;
-        // Get cells A to H
-        const rowData = row.slice(0, 8);
+        // Get cells A to H, but skip B and C (Fag and Hovedvakt)
+        const rowData = row.slice(0, 1).concat(row.slice(3, 8));
         tableData.push(rowData);
       } else {
         // Empty row - increment counter but keep looking
@@ -433,10 +434,10 @@ function loadMultipleSheets() {
       // Extract data from A6 to H6 and down
       if (data.length > 5) {
         const headerRow = data[5];
-        const headers = headerRow.slice(0, 8);
+        const headers = headerRow.slice(0, 1).concat(headerRow.slice(3, 8)); // A + D-H
         
-        // Add sheet name as a header separator
-        combinedData.push([sheetName, '', '', '', '', '', '', '']);
+        // Add sheet name as a header separator (6 columns now instead of 8)
+        combinedData.push([sheetName, '', '', '', '', '']);
         combinedData.push(headers);
         
         // Get data rows
@@ -448,7 +449,7 @@ function loadMultipleSheets() {
           
           if (hasContent) {
             emptyRowCount = 0;
-            const rowData = row.slice(0, 8);
+            const rowData = row.slice(0, 1).concat(row.slice(3, 8)); // A + D-H
             combinedData.push(rowData);
           } else {
             emptyRowCount++;
