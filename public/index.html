@@ -65,6 +65,12 @@
             <option value="">-- Select a sheet --</option>
           </select>
         </div>
+        <div style="margin-bottom: 16px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="dateShowHiddenCols" style="cursor: pointer;">
+            <span>Show Fag and Hovedvakt columns</span>
+          </label>
+        </div>
         <div id="dateTabContent" style="display: none;">
           <div style="overflow-x: auto;">
             <table id="dateScheduleTable" class="date-schedule-table" style="width: 100%; border-collapse: collapse;"></table>
@@ -82,6 +88,12 @@
           <div id="multiSheetCheckboxes" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 12px; border: 1px solid #ddd; border-radius: 6px;">
           </div>
           <button id="loadMultiSheetsBtn" class="btn-export" style="margin-top: 12px; width: 100%;">Load Selected Sheets</button>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="multiShowHiddenCols" style="cursor: pointer;">
+            <span>Show Fag and Hovedvakt columns</span>
+          </label>
         </div>
         <div id="multiTabContent" style="display: none; margin-top: 16px;">
           <div style="overflow-x: auto;">

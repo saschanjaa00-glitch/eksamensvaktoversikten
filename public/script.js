@@ -3,6 +3,8 @@ let filterDate = null;
 let disabledDates = new Set();
 let currentWorkbook = null;
 let allSheetNames = [];
+let showHiddenColsDate = false;
+let showHiddenColsMulti = false;
 
 // Check if a sheet name is formatted as a date (DD.MM)
 function isDateFormattedSheet(sheetName) {
@@ -36,6 +38,21 @@ window.addEventListener('load', () => {
   
   // Multi-sheet loader listener
   document.getElementById('loadMultiSheetsBtn').addEventListener('click', loadMultipleSheets);
+  
+  // Column visibility toggles
+  document.getElementById('dateShowHiddenCols').addEventListener('change', () => {
+    showHiddenColsDate = document.getElementById('dateShowHiddenCols').checked;
+    if (window.currentDateTableDataFull) {
+      renderDateScheduleTable(window.currentDateTableDataFull);
+    }
+  });
+  
+  document.getElementById('multiShowHiddenCols').addEventListener('change', () => {
+    showHiddenColsMulti = document.getElementById('multiShowHiddenCols').checked;
+    if (window.currentMultiTableDataFull) {
+      renderMultiScheduleTable(window.currentMultiTableDataFull);
+    }
+  });
 });
 
 function switchTab(tab) {
@@ -311,8 +328,7 @@ function escapeHtml(text) {
 }
 
 function loadDateScheduleSheet(sheetName) {
-  if (!currentWorkbook) {
-    alert('No workbook loaded.');
+  if (!currentWorkbook) {\n    alert('No workbook loaded.');
     return;
   }
   
@@ -327,16 +343,15 @@ function loadDateScheduleSheet(sheetName) {
   const range = worksheet['!ref'];
   const data = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
   
-  // Extract data from A6 to H6 and down
+  // Extract data from A6 to H6 and down (with all columns)
   // Row 6 is index 5 (0-based), columns A-H are indices 0-7
-  // We'll skip columns B (Fag) and C (Hovedvakt) to show only A and D-H
-  const tableData = [];
+  const fullTableData = [];
   
   if (data.length > 5) {
-    // Get headers from row 6 (A6 to H6), but skip B and C
+    // Get headers from row 6 (A6 to H6) - all columns
     const headerRow = data[5];
-    const headers = headerRow.slice(0, 1).concat(headerRow.slice(3, 8)); // A + D-H
-    tableData.push(headers);
+    const headers = headerRow.slice(0, 8); // A to H (indices 0-7)
+    fullTableData.push(headers);
     
     // Get data rows starting from row 7
     // Collect rows but look ahead for content after empty rows
@@ -349,9 +364,9 @@ function loadDateScheduleSheet(sheetName) {
       if (hasContent) {
         // Found content, reset empty row counter
         emptyRowCount = 0;
-        // Get cells A to H, but skip B and C (Fag and Hovedvakt)
-        const rowData = row.slice(0, 1).concat(row.slice(3, 8));
-        tableData.push(rowData);
+        // Get all cells A to H
+        const rowData = row.slice(0, 8);
+        fullTableData.push(rowData);
       } else {
         // Empty row - increment counter but keep looking
         emptyRowCount++;
@@ -373,22 +388,40 @@ function loadDateScheduleSheet(sheetName) {
     }
     
     // Remove trailing empty rows
-    while (tableData.length > 1) {
-      const lastRow = tableData[tableData.length - 1];
-      const lastRowFirstCell = lastRow[0];
+    while (fullTableData.length > 1) {
+      const lastRow = fullTableData[fullTableData.length - 1];\n      const lastRowFirstCell = lastRow[0];
       if (!lastRowFirstCell || String(lastRowFirstCell).trim() === '') {
-        tableData.pop();
+        fullTableData.pop();
       } else {
         break;
       }
     }
   }
   
+  // Store full data and render
+  window.currentDateTableDataFull = fullTableData;
+  showHiddenColsDate = false;
+  document.getElementById('dateShowHiddenCols').checked = false;
+  renderDateScheduleTable(fullTableData);
+  document.getElementById('dateTabContent').style.display = 'block';
+}
+
+function renderDateScheduleTable(fullTableData) {
+  // Filter columns B and C if toggle is off
+  const filteredData = fullTableData.map((row, rowIdx) => {
+    if (showHiddenColsDate) {
+      return row; // Show all columns
+    } else {
+      // Hide B and C columns - only show A and D-H
+      return row.slice(0, 1).concat(row.slice(3, 8));
+    }
+  });
+  
   // Render the table
   const table = document.getElementById('dateScheduleTable');
   let html = '';
   
-  tableData.forEach((row, rowIdx) => {
+  filteredData.forEach((row, rowIdx) => {
     const isHeader = rowIdx === 0;
     const cellTag = isHeader ? 'th' : 'td';
     const style = isHeader 
@@ -403,10 +436,9 @@ function loadDateScheduleSheet(sheetName) {
   });
   
   table.innerHTML = html;
-  document.getElementById('dateTabContent').style.display = 'block';
   
-  // Store the table data for copying
-  window.currentDateTableData = tableData;
+  // Store the filtered table data for copying
+  window.currentDateTableData = filteredData;
 }
 
 function loadMultipleSheets() {
@@ -434,10 +466,10 @@ function loadMultipleSheets() {
       // Extract data from A6 to H6 and down
       if (data.length > 5) {
         const headerRow = data[5];
-        const headers = headerRow.slice(0, 1).concat(headerRow.slice(3, 8)); // A + D-H
+        const headers = headerRow.slice(0, 8); // A to H (all columns)
         
-        // Add sheet name as a header separator (6 columns now instead of 8)
-        combinedData.push([sheetName, '', '', '', '', '']);
+        // Add sheet name as a header separator (8 columns for full data)
+        combinedData.push([sheetName, '', '', '', '', '', '', '']);
         combinedData.push(headers);
         
         // Get data rows
@@ -449,7 +481,7 @@ function loadMultipleSheets() {
           
           if (hasContent) {
             emptyRowCount = 0;
-            const rowData = row.slice(0, 1).concat(row.slice(3, 8)); // A + D-H
+            const rowData = row.slice(0, 8); // All columns for full data
             combinedData.push(rowData);
           } else {
             emptyRowCount++;
@@ -484,12 +516,34 @@ function loadMultipleSheets() {
   
   // Render the table
   const table = document.getElementById('multiScheduleTable');
+  window.currentMultiTableDataFull = combinedData;
+  showHiddenColsMulti = false;
+  document.getElementById('multiShowHiddenCols').checked = false;
+  renderMultiScheduleTable(combinedData);
+  document.getElementById('multiTabContent').style.display = 'block';
+}
+
+function renderMultiScheduleTable(fullTableData) {
+  // Filter columns B and C if toggle is off
+  const filteredData = fullTableData.map((row, rowIdx) => {
+    const isSheetHeader = row[0] && allSheetNames.includes(String(row[0]));
+    
+    if (isSheetHeader || showHiddenColsMulti) {
+      return row; // Show all columns for sheet headers or if toggle is on
+    } else {
+      // Hide B and C columns - only show A and D-H
+      return row.slice(0, 1).concat(row.slice(3, 8));
+    }
+  });
+  
+  // Render the table
+  const table = document.getElementById('multiScheduleTable');
   let html = '';
   
-  combinedData.forEach((row, rowIdx) => {
+  filteredData.forEach((row, rowIdx) => {
     const isSheetHeader = row[0] && allSheetNames.includes(String(row[0]));
-    const isColumnHeader = !isSheetHeader && combinedData.length > rowIdx - 1 && 
-                          combinedData[rowIdx - 1] && allSheetNames.includes(String(combinedData[rowIdx - 1][0]));
+    const isColumnHeader = !isSheetHeader && filteredData.length > rowIdx - 1 && 
+                          filteredData[rowIdx - 1] && allSheetNames.includes(String(filteredData[rowIdx - 1][0]));
     
     const cellTag = (isSheetHeader || isColumnHeader) ? 'th' : 'td';
     const style = (isSheetHeader || isColumnHeader)
@@ -505,10 +559,9 @@ function loadMultipleSheets() {
   });
   
   table.innerHTML = html;
-  document.getElementById('multiTabContent').style.display = 'block';
   
-  // Store the table data for copying
-  window.currentMultiTableData = combinedData;
+  // Store the filtered table data for copying
+  window.currentMultiTableData = filteredData;
 }
 
 document.getElementById('copyOneNoteBtn').addEventListener('click', async () => {
