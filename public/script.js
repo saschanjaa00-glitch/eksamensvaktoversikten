@@ -513,7 +513,7 @@ document.getElementById('copyOneNoteBtn').addEventListener('click', async () => 
   try {
     // Build HTML table
     let html = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">';
-    html += '<tr style="background-color: #667eea; color: white;"><th style="font-weight: bold;">Teacher Name</th><th style="font-weight: bold;">Scheduled Dates</th></tr>';
+    html += '<tr style="background-color: #e0f0ff;"><th style="font-weight: bold; padding: 8px; border: 1px solid #000;">Teacher Name</th><th style="font-weight: bold; padding: 8px; border: 1px solid #000;">Scheduled Dates</th></tr>';
     
     currentTeachersData.forEach((teacher, idx) => {
       let dates = teacher.dates;
@@ -581,14 +581,13 @@ document.getElementById('copyDateOneNoteBtn').addEventListener('click', async ()
     
     window.currentDateTableData.forEach((row, rowIdx) => {
       const isHeader = rowIdx === 0;
-      const bgColor = isHeader ? '#667eea' : (rowIdx % 2 === 0 ? 'white' : '#f5f5f5');
-      const textColor = isHeader ? 'white' : 'black';
+      const bgColor = isHeader ? '#e0f0ff' : 'white';
       const fontWeight = isHeader ? 'bold' : 'normal';
       
-      html += `<tr style="background-color: ${bgColor}; color: ${textColor};">`;
+      html += `<tr style="background-color: ${bgColor};">`;
       row.forEach(cell => {
         const cellTag = isHeader ? 'th' : 'td';
-        html += `<${cellTag} style="font-weight: ${fontWeight}; padding: 8px; border: 1px solid #ddd;">${escapeHtml(String(cell || ''))}</${cellTag}>`;
+        html += `<${cellTag} style="font-weight: ${fontWeight}; padding: 8px; border: 1px solid #000;">${escapeHtml(String(cell || ''))}</${cellTag}>`;
       });
       html += '</tr>';
     });
@@ -624,21 +623,18 @@ document.getElementById('copyMultiOneNoteBtn').addEventListener('click', async (
     let html = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">';
     
     window.currentMultiTableData.forEach((row, rowIdx) => {
-      const isSheetHeader = rowIdx > 0 && window.currentMultiTableData[rowIdx - 1] && 
-                           String(window.currentMultiTableData[rowIdx - 1][0]).trim() !== '' && 
-                           row[0] && allSheetNames.includes(String(row[0]));
+      const isSheetHeader = row[0] && allSheetNames.includes(String(row[0]));
       const isColumnHeader = !isSheetHeader && window.currentMultiTableData.length > rowIdx - 1 && 
                             window.currentMultiTableData[rowIdx - 1] && 
                             allSheetNames.includes(String(window.currentMultiTableData[rowIdx - 1][0]));
       
-      const bgColor = (isSheetHeader || isColumnHeader) ? '#000' : 'white';
-      const textColor = (isSheetHeader || isColumnHeader) ? 'white' : 'black';
+      const bgColor = (isSheetHeader || isColumnHeader) ? '#e0f0ff' : 'white';
       const fontWeight = (isSheetHeader || isColumnHeader) ? 'bold' : 'normal';
       
-      html += `<tr style="background-color: ${bgColor}; color: ${textColor};">`;
+      html += `<tr style="background-color: ${bgColor};">`;
       row.forEach(cell => {
         const cellTag = (isSheetHeader || isColumnHeader) ? 'th' : 'td';
-        html += `<${cellTag} style="font-weight: ${fontWeight}; padding: 8px; border: 1px solid #ddd;">${escapeHtml(String(cell || ''))}</${cellTag}>`;
+        html += `<${cellTag} style="font-weight: ${fontWeight}; padding: 8px; border: 1px solid #000;">${escapeHtml(String(cell || ''))}</${cellTag}>`;
       });
       html += '</tr>';
     });
