@@ -195,7 +195,7 @@ window.addEventListener('load', () => {
     } finally {
       showLoading(false);
     }
-  }) || console.warn('Upload form not found');
+  });
   } else {
     console.warn('Window load event: uploadForm element not found');
   }
