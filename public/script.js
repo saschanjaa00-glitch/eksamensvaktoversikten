@@ -1,5 +1,17 @@
 let currentTeachersData = [];
 let filterDate = null;
+let currentWorkbook = null;
+let currentSheetName = '';
+let currentFileName = 'edited_schedule.xlsx';
+
+const tabScheduleBtn = document.getElementById('tabScheduleBtn');
+const tabEditorBtn = document.getElementById('tabEditorBtn');
+const scheduleTab = document.getElementById('scheduleTab');
+const editorTab = document.getElementById('editorTab');
+
+tabScheduleBtn.addEventListener('click', () => setActiveTab('schedule'));
+tabEditorBtn.addEventListener('click', () => setActiveTab('editor'));
+document.getElementById('downloadEditedBtn').addEventListener('click', downloadEditedWorkbook);
 
 document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -17,6 +29,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
 
   // Set filter date if provided
   filterDate = filterDateInput.value ? new Date(filterDateInput.value) : null;
+  currentFileName = file.name;
 
   showLoading(true);
   hideError();
@@ -39,6 +52,8 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
 
     const data = await response.json();
     displayResults(data);
+    await loadEditableSheet(file, sheetName);
+    setActiveTab('schedule');
   } catch (error) {
     showError(error.message);
   } finally {
@@ -63,6 +78,14 @@ function hideError() {
 
 function hideResults() {
   document.getElementById('results').style.display = 'none';
+}
+
+function setActiveTab(tabName) {
+  const isSchedule = tabName === 'schedule';
+  tabScheduleBtn.classList.toggle('active', isSchedule);
+  tabEditorBtn.classList.toggle('active', !isSchedule);
+  scheduleTab.style.display = isSchedule ? 'block' : 'none';
+  editorTab.style.display = isSchedule ? 'none' : 'block';
 }
 
 function displayResults(data) {
@@ -133,6 +156,170 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+async function loadEditableSheet(file, preferredSheetName) {
+  if (!window.XLSX) {
+    throw new Error('Excel editor library failed to load. Please refresh and try again.');
+  }
+
+  const buffer = await file.arrayBuffer();
+  currentWorkbook = window.XLSX.read(buffer, { type: 'array' });
+
+  currentSheetName = currentWorkbook.SheetNames.includes(preferredSheetName)
+    ? preferredSheetName
+    : currentWorkbook.SheetNames[0];
+
+  const worksheet = currentWorkbook.Sheets[currentSheetName];
+  const sheetData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+  renderSheetEditor(sheetData);
+}
+
+function renderSheetEditor(sheetData) {
+  const editor = document.getElementById('sheetEditorContainer');
+
+  if (!sheetData || sheetData.length === 0) {
+    editor.innerHTML = '<p style="padding:12px; color:#666;">No editable data found in this sheet.</p>';
+    return;
+  }
+
+  const maxCols = Math.max(...sheetData.map((row) => row.length), 1);
+  const normalized = sheetData.map((row) => {
+    const cells = [...row];
+    while (cells.length < maxCols) cells.push('');
+    return cells;
+  });
+
+  const DATE_START_COL = 4;
+  
+  // Find Maks column (look for header containing "Maks")
+  let maksCol = -1;
+  if (normalized.length > 0) {
+    maksCol = normalized[0].findIndex(cell => String(cell).toLowerCase().includes('maks'));
+  }
+
+  const tableRows = normalized
+    .map((row, rowIndex) => {
+      const tds = row
+        .map((cell, colIndex) => {
+          const cellValue = String(cell ?? '');
+          const isDateColumn = colIndex >= DATE_START_COL && colIndex !== maksCol;
+          const isMaksColumn = colIndex === maksCol;
+
+          if (rowIndex > 0 && isDateColumn) {
+            const checked = cellValue.trim() === '1' ? 'checked' : '';
+            return `<td class="toggle-cell"><input type="checkbox" data-type="toggle" data-row="${rowIndex}" data-col="${colIndex}" ${checked} /></td>`;
+          }
+
+          const colClass = isMaksColumn ? 'maks-col' : '';
+          return `<td class="${colClass}"><input data-type="text" data-row="${rowIndex}" data-col="${colIndex}" value="${escapeHtml(cellValue)}" /></td>`;
+        })
+        .join('');
+      
+      // Add Sum and % columns
+      let sumCell = '';
+      let percentCell = '';
+      
+      if (rowIndex === 0) {
+        // Header row
+        sumCell = '<td class="calc-col sum-col"><input readonly value="Sum" /></td>';
+        percentCell = '<td class="calc-col percent-col"><input readonly value="%" /></td>';
+      } else {
+        // Data rows - calculate sum and percentage (exclude Maks column from count)
+        const sum = row.filter((cell, colIndex) => {
+          return colIndex >= DATE_START_COL && colIndex !== maksCol && String(cell).trim() === '1';
+        }).length;
+        const maks = maksCol >= 0 ? parseFloat(row[maksCol]) || 0 : 0;
+        const percent = maks > 0 ? Math.round((sum / maks) * 100) : 0;
+        
+        sumCell = `<td class="calc-col sum-col"><input readonly value="${sum}" data-calc-type="sum" data-row="${rowIndex}" /></td>`;
+        percentCell = `<td class="calc-col percent-col"><input readonly value="${percent}%" data-calc-type="percent" data-row="${rowIndex}" /></td>`;
+      }
+      
+      return `<tr>${tds}${sumCell}${percentCell}</tr>`;
+    })
+    .join('');
+
+  editor.innerHTML = `<table class="sheet-editor-table"><tbody>${tableRows}</tbody></table>`;
+
+  // Store maksCol for use in the update function
+  const storedMaksCol = maksCol;
+
+  // Update calculations when checkboxes change
+  editor.querySelectorAll('input[data-type="toggle"]').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => {
+      updateRowCalculations();
+    });
+  });
+  
+  // Also update when Maks value changes
+  if (storedMaksCol >= 0) {
+    editor.querySelectorAll(`input[data-col="${storedMaksCol}"]`).forEach((input) => {
+      input.addEventListener('input', () => {
+        updateRowCalculations();
+      });
+    });
+  }
+  
+  function updateRowCalculations() {
+    const table = editor.querySelector('.sheet-editor-table');
+    const rows = table.querySelectorAll('tr');
+    
+    rows.forEach((tr, rowIndex) => {
+      if (rowIndex === 0) return; // Skip header
+      
+      const checkboxes = tr.querySelectorAll('input[data-type="toggle"]');
+      const sum = Array.from(checkboxes).filter(cb => cb.checked).length;
+      
+      const maksInput = storedMaksCol >= 0 ? tr.querySelector(`input[data-col="${storedMaksCol}"]`) : null;
+      const maks = maksInput ? parseFloat(maksInput.value) || 0 : 0;
+      const percent = maks > 0 ? Math.round((sum / maks) * 100) : 0;
+      
+      const sumInput = tr.querySelector('input[data-calc-type="sum"]');
+      const percentInput = tr.querySelector('input[data-calc-type="percent"]');
+      
+      if (sumInput) sumInput.value = sum;
+      if (percentInput) percentInput.value = percent + '%';
+    });
+  }
+}
+
+function downloadEditedWorkbook() {
+  if (!currentWorkbook || !currentSheetName) {
+    alert('No sheet loaded. Please upload and process a file first.');
+    return;
+  }
+
+  const inputs = Array.from(document.querySelectorAll('#sheetEditorContainer input')).filter(
+    el => !el.hasAttribute('data-calc-type') // Exclude calculated columns
+  );
+  if (inputs.length === 0) {
+    alert('No editable sheet data found.');
+    return;
+  }
+
+  const maxRow = Math.max(...inputs.map((el) => Number(el.dataset.row)), 0);
+  const maxCol = Math.max(...inputs.map((el) => Number(el.dataset.col)), 0);
+  const updatedData = Array.from({ length: maxRow + 1 }, () => Array(maxCol + 1).fill(''));
+
+  inputs.forEach((el) => {
+    const row = Number(el.dataset.row);
+    const col = Number(el.dataset.col);
+    if (el.dataset.type === 'toggle') {
+      updatedData[row][col] = el.checked ? 1 : 0;
+    } else {
+      updatedData[row][col] = el.value;
+    }
+  });
+
+  const updatedSheet = window.XLSX.utils.aoa_to_sheet(updatedData);
+  currentWorkbook.Sheets[currentSheetName] = updatedSheet;
+
+  const outputName = currentFileName.toLowerCase().endsWith('.xlsx')
+    ? currentFileName.replace(/\.xlsx$/i, '_edited.xlsx')
+    : 'edited_schedule.xlsx';
+
+  window.XLSX.writeFile(currentWorkbook, outputName);
 }
 
 document.getElementById('copyOneNoteBtn').addEventListener('click', async () => {
