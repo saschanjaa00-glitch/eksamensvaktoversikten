@@ -11,10 +11,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configure multer for file uploads
+// Configure multer for file uploads - use /tmp for Vercel
+const uploadDir = process.env.VERCEL ? '/tmp/uploads' : path.join(__dirname, '../uploads');
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -69,7 +69,12 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Lærervakter app running at http://localhost:${PORT}`);
-});
+// Export for Vercel
+export default app;
+
+// Start server locally (not on Vercel)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Lærervakter app running at http://localhost:${PORT}`);
+  });
+}
