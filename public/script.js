@@ -92,9 +92,16 @@ window.addEventListener('load', () => {
 
       try {
         console.log('Sending file to server');
+        console.log('File object:', file);
+        console.log('File name:', file.name);
+        console.log('File size:', file.size);
+        console.log('File type:', file.type);
+        
         const formData = new FormData();
         formData.append('file', file);
         formData.append('sheetName', sheetName);
+        
+        console.log('FormData created, keys:', Array.from(formData.keys()));
 
         const response = await fetch('/api/upload', {
           method: 'POST',

@@ -48,7 +48,12 @@ app.get('/', (req, res) => {
 // File upload and processing route
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
+    console.log('Upload endpoint hit');
+    console.log('req.file:', req.file);
+    console.log('req.body:', req.body);
+    
     if (!req.file) {
+      console.error('No file in request');
       return res.status(400).json({ error: 'No file provided' });
     }
 
