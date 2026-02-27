@@ -4,6 +4,11 @@ let disabledDates = new Set();
 let currentWorkbook = null;
 let allSheetNames = [];
 
+// Check if a sheet name is formatted as a date (DD.MM)
+function isDateFormattedSheet(sheetName) {
+  return /^\d{2}\.\d{2}$/.test(String(sheetName).trim());
+}
+
 // Initialize Flatpickr date picker
 window.addEventListener('load', () => {
   flatpickr('#filterDate', {
@@ -131,7 +136,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     const selector = document.getElementById('sheetSelector');
     selector.innerHTML = '<option value="">-- Select a sheet --</option>';
     allSheetNames.forEach(sheetName => {
-      if (sheetName !== sheetNameInput.value) { // Exclude the teacher schedule sheet
+      if (sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)) { // Exclude teacher sheet and only show date-formatted sheets
         const option = document.createElement('option');
         option.value = sheetName;
         option.textContent = sheetName;
@@ -143,7 +148,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     const checkboxContainer = document.getElementById('multiSheetCheckboxes');
     checkboxContainer.innerHTML = '';
     allSheetNames.forEach(sheetName => {
-      if (sheetName !== sheetNameInput.value) { // Exclude the teacher schedule sheet
+      if (sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)) { // Exclude teacher sheet and only show date-formatted sheets
         const label = document.createElement('label');
         label.style.display = 'flex';
         label.style.alignItems = 'center';
@@ -457,7 +462,8 @@ function loadMultipleSheets() {
       ? 'style="font-weight: bold; padding: 8px; border: 1px solid #000; white-space: nowrap;"'
       : 'style="padding: 8px; border: 1px solid #000; white-space: nowrap;"';
     
-    html += '<tr>';
+    const trStyle = isSheetHeader ? 'style="background-color: #e0f0ff;"' : '';
+    html += `<tr ${trStyle}>`;
     row.forEach(cell => {
       html += `<${cellTag} ${style}>${escapeHtml(String(cell || ''))}</${cellTag}>`;
     });
