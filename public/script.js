@@ -3,8 +3,10 @@ let filterDate = null;
 let disabledDates = new Set();
 let currentWorkbook = null;
 let allSheetNames = [];
-let showHiddenColsDate = false;
-let showHiddenColsMulti = false;
+let showFagDate = false;
+let showHovedvaktDate = false;
+let showFagMulti = false;
+let showHovedvaktMulti = false;
 
 // Check if a sheet name is formatted as a date (DD.MM)
 function isDateFormattedSheet(sheetName) {
@@ -39,16 +41,31 @@ window.addEventListener('load', () => {
   // Multi-sheet loader listener
   document.getElementById('loadMultiSheetsBtn').addEventListener('click', loadMultipleSheets);
   
-  // Column visibility toggles
-  document.getElementById('dateShowHiddenCols').addEventListener('change', () => {
-    showHiddenColsDate = document.getElementById('dateShowHiddenCols').checked;
+  // Column visibility toggles for date tab
+  document.getElementById('dateShowFag').addEventListener('change', () => {
+    showFagDate = document.getElementById('dateShowFag').checked;
     if (window.currentDateTableDataFull) {
       renderDateScheduleTable(window.currentDateTableDataFull);
     }
   });
   
-  document.getElementById('multiShowHiddenCols').addEventListener('change', () => {
-    showHiddenColsMulti = document.getElementById('multiShowHiddenCols').checked;
+  document.getElementById('dateShowHovedvakt').addEventListener('change', () => {
+    showHovedvaktDate = document.getElementById('dateShowHovedvakt').checked;
+    if (window.currentDateTableDataFull) {
+      renderDateScheduleTable(window.currentDateTableDataFull);
+    }
+  });
+  
+  // Column visibility toggles for multi tab
+  document.getElementById('multiShowFag').addEventListener('change', () => {
+    showFagMulti = document.getElementById('multiShowFag').checked;
+    if (window.currentMultiTableDataFull) {
+      renderMultiScheduleTable(window.currentMultiTableDataFull);
+    }
+  });
+  
+  document.getElementById('multiShowHovedvakt').addEventListener('change', () => {
+    showHovedvaktMulti = document.getElementById('multiShowHovedvakt').checked;
     if (window.currentMultiTableDataFull) {
       renderMultiScheduleTable(window.currentMultiTableDataFull);
     }
@@ -423,21 +440,33 @@ function loadDateScheduleSheet(sheetName) {
   
   // Store full data and render
   window.currentDateTableDataFull = fullTableData;
-  showHiddenColsDate = false;
-  document.getElementById('dateShowHiddenCols').checked = false;
+  showFagDate = false;
+  showHovedvaktDate = false;
+  document.getElementById('dateShowFag').checked = false;
+  document.getElementById('dateShowHovedvakt').checked = false;
   renderDateScheduleTable(fullTableData);
   document.getElementById('dateTabContent').style.display = 'block';
 }
 
 function renderDateScheduleTable(fullTableData) {
-  // Filter columns B and C if toggle is off
+  // Filter columns B (Fag) and C (Hovedvakt) based on toggles
   const filteredData = fullTableData.map((row, rowIdx) => {
-    if (showHiddenColsDate) {
-      return row; // Show all columns
-    } else {
-      // Hide B and C columns - only show A and D-H
-      return row.slice(0, 1).concat(row.slice(3, 8));
+    let filteredRow = [row[0]]; // Always include column A
+    
+    // Add column B (Fag) if showFagDate is true
+    if (showFagDate) {
+      filteredRow.push(row[1]);
     }
+    
+    // Add column C (Hovedvakt) if showHovedvaktDate is true
+    if (showHovedvaktDate) {
+      filteredRow.push(row[2]);
+    }
+    
+    // Always add columns D-H (indices 3-7)
+    filteredRow = filteredRow.concat(row.slice(3, 8));
+    
+    return filteredRow;
   });
   
   // Render the table
@@ -540,23 +569,40 @@ function loadMultipleSheets() {
   // Render the table
   const table = document.getElementById('multiScheduleTable');
   window.currentMultiTableDataFull = combinedData;
-  showHiddenColsMulti = false;
-  document.getElementById('multiShowHiddenCols').checked = false;
+  showFagMulti = false;
+  showHovedvaktMulti = false;
+  document.getElementById('multiShowFag').checked = false;
+  document.getElementById('multiShowHovedvakt').checked = false;
   renderMultiScheduleTable(combinedData);
   document.getElementById('multiTabContent').style.display = 'block';
 }
 
 function renderMultiScheduleTable(fullTableData) {
-  // Filter columns B and C if toggle is off
+  // Filter columns B (Fag) and C (Hovedvakt) based on toggles
   const filteredData = fullTableData.map((row, rowIdx) => {
     const isSheetHeader = row[0] && allSheetNames.includes(String(row[0]));
     
-    if (isSheetHeader || showHiddenColsMulti) {
-      return row; // Show all columns for sheet headers or if toggle is on
-    } else {
-      // Hide B and C columns - only show A and D-H
-      return row.slice(0, 1).concat(row.slice(3, 8));
+    // Always show all columns for sheet headers
+    if (isSheetHeader) {
+      return row;
     }
+    
+    let filteredRow = [row[0]]; // Always include column A
+    
+    // Add column B (Fag) if showFagMulti is true
+    if (showFagMulti) {
+      filteredRow.push(row[1]);
+    }
+    
+    // Add column C (Hovedvakt) if showHovedvaktMulti is true
+    if (showHovedvaktMulti) {
+      filteredRow.push(row[2]);
+    }
+    
+    // Always add columns D-H (indices 3-7)
+    filteredRow = filteredRow.concat(row.slice(3, 8));
+    
+    return filteredRow;
   });
   
   // Render the table
