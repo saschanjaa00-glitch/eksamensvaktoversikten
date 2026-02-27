@@ -349,7 +349,8 @@ function escapeHtml(text) {
 }
 
 function loadDateScheduleSheet(sheetName) {
-  if (!currentWorkbook) {\n    alert('No workbook loaded.');
+  if (!currentWorkbook) {
+    alert('No workbook loaded.');
     return;
   }
   
