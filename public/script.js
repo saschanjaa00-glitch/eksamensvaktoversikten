@@ -480,8 +480,7 @@ function loadMultipleSheets() {
   let html = '';
   
   combinedData.forEach((row, rowIdx) => {
-    const isSheetHeader = rowIdx > 0 && combinedData[rowIdx - 1] && String(combinedData[rowIdx - 1][0]).trim() !== '' && 
-                         row[0] && allSheetNames.includes(String(row[0]));
+    const isSheetHeader = row[0] && allSheetNames.includes(String(row[0]));
     const isColumnHeader = !isSheetHeader && combinedData.length > rowIdx - 1 && 
                           combinedData[rowIdx - 1] && allSheetNames.includes(String(combinedData[rowIdx - 1][0]));
     
