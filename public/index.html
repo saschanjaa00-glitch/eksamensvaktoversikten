@@ -12,7 +12,7 @@
     <p class="subtitle">Teacher Schedule Parser</p>
 
     <div class="upload-section">
-      <form id="uploadForm">
+      <form id="uploadForm" method="POST" action="/api/upload">
         <div class="form-group">
           <label for="file">Upload Excel File:</label>
           <input type="file" id="file" name="file" accept=".xlsx,.xls" required>

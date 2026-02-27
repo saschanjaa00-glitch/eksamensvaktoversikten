@@ -55,53 +55,62 @@ window.addEventListener('load', () => {
   });
 
   // Upload form listener
-  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const uploadForm = document.getElementById('uploadForm');
+  if (uploadForm) {
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      console.log('Form submitted');
 
-    const fileInput = document.getElementById('file');
-    const sheetNameInput = document.getElementById('sheetName');
-    const filterDateInput = document.getElementById('filterDate');
-    const file = fileInput.files[0];
-    const sheetName = sheetNameInput.value || 'Lærervakter';
+      const fileInput = document.getElementById('file');
+      const sheetNameInput = document.getElementById('sheetName');
+      const filterDateInput = document.getElementById('filterDate');
+      const file = fileInput.files[0];
+      const sheetName = sheetNameInput.value || 'Lærervakter';
 
-    if (!file) {
-      showError('Please select a file');
-      return;
-    }
-
-    // Set filter date if provided
-    // Parse DD.MM.YYYY format for date filter
-    filterDate = null;
-    if (filterDateInput.value.trim()) {
-      const match = filterDateInput.value.trim().match(/(\d{2})\.(\d{2})\.(\d{4})/);
-      if (match) {
-        const day = parseInt(match[1]);
-        const month = parseInt(match[2]);
-        filterDate = { day, month };
-      }
-    }
-
-    showLoading(true);
-    hideError();
-    hideResults();
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sheetName', sheetName);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process file');
+      if (!file) {
+        showError('Please select a file');
+        return;
       }
 
-      const data = await response.json();
-      displayResults(data);
+      console.log('File selected:', file.name);
+
+      // Set filter date if provided
+      // Parse DD.MM.YYYY format for date filter
+      filterDate = null;
+      if (filterDateInput.value.trim()) {
+        const match = filterDateInput.value.trim().match(/(\d{2})\.(\d{2})\.(\d{4})/);
+        if (match) {
+          const day = parseInt(match[1]);
+          const month = parseInt(match[2]);
+          filterDate = { day, month };
+        }
+      }
+
+      showLoading(true);
+      hideError();
+      hideResults();
+
+      try {
+        console.log('Sending file to server');
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('sheetName', sheetName);
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        console.log('Response status:', response.status);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to process file');
+        }
+
+        const data = await response.json();
+        console.log('Data received:', data);
+        displayResults(data);
       
       // Load workbook for sheet selection
       const buffer = await file.arrayBuffer();
@@ -174,11 +183,15 @@ window.addEventListener('load', () => {
         });
       });
     } catch (error) {
+      console.error('Error uploading file:', error);
       showError(error.message);
     } finally {
       showLoading(false);
     }
-  });
+  }) || console.warn('Upload form not found');
+  } else {
+    console.warn('Window load event: uploadForm element not found');
+  }
 });
 
 function switchTab(tab) {
