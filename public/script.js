@@ -48,7 +48,9 @@ function switchTab(tab) {
   const exportPdf = document.getElementById('exportPdfBtn');
   const copyOneNote = document.getElementById('copyOneNoteBtn');
   const copyDateOneNote = document.getElementById('copyDateOneNoteBtn');
+  const saveDatePng = document.getElementById('saveDatePngBtn');
   const copyMultiOneNote = document.getElementById('copyMultiOneNoteBtn');
+  const saveMultiPng = document.getElementById('saveMultiPngBtn');
   
   // Reset all
   teacherBtn.classList.remove('active');
@@ -60,7 +62,9 @@ function switchTab(tab) {
   exportPdf.style.display = 'none';
   copyOneNote.style.display = 'none';
   copyDateOneNote.style.display = 'none';
+  saveDatePng.style.display = 'none';
   copyMultiOneNote.style.display = 'none';
+  saveMultiPng.style.display = 'none';
   
   // Set active tab
   if (tab === 'teacher') {
@@ -72,10 +76,12 @@ function switchTab(tab) {
     dateBtn.classList.add('active');
     dateTab.style.display = 'block';
     copyDateOneNote.style.display = 'block';
+    saveDatePng.style.display = 'block';
   } else if (tab === 'multi') {
     multiBtn.classList.add('active');
     multiTab.style.display = 'block';
     copyMultiOneNote.style.display = 'block';
+    saveMultiPng.style.display = 'block';
   }
 }
 
@@ -728,5 +734,61 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
   } catch (error) {
     console.error('Error generating PDF:', error);
     alert('Error generating PDF: ' + error.message);
+  }
+});
+
+document.getElementById('saveDatePngBtn').addEventListener('click', async () => {
+  if (!window.currentDateTableData || window.currentDateTableData.length === 0) {
+    alert('No data to save. Please select a sheet first.');
+    return;
+  }
+
+  try {
+    const element = document.getElementById('dateScheduleTable');
+    if (!element) {
+      alert('Table not found.');
+      return;
+    }
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      backgroundColor: '#ffffff'
+    });
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = 'schedule_by_date.png';
+    link.click();
+  } catch (error) {
+    console.error('Error saving PNG:', error);
+    alert('Error saving PNG: ' + error.message);
+  }
+});
+
+document.getElementById('saveMultiPngBtn').addEventListener('click', async () => {
+  if (!window.currentMultiTableData || window.currentMultiTableData.length === 0) {
+    alert('No data to save. Please load sheets first.');
+    return;
+  }
+
+  try {
+    const element = document.getElementById('multiScheduleTable');
+    if (!element) {
+      alert('Table not found.');
+      return;
+    }
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      backgroundColor: '#ffffff'
+    });
+
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = 'multi_sheet_export.png';
+    link.click();
+  } catch (error) {
+    console.error('Error saving PNG:', error);
+    alert('Error saving PNG: ' + error.message);
   }
 });
