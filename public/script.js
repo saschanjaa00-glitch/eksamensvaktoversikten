@@ -53,6 +53,132 @@ window.addEventListener('load', () => {
       renderMultiScheduleTable(window.currentMultiTableDataFull);
     }
   });
+
+  // Upload form listener
+  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('file');
+    const sheetNameInput = document.getElementById('sheetName');
+    const filterDateInput = document.getElementById('filterDate');
+    const file = fileInput.files[0];
+    const sheetName = sheetNameInput.value || 'Lærervakter';
+
+    if (!file) {
+      showError('Please select a file');
+      return;
+    }
+
+    // Set filter date if provided
+    // Parse DD.MM.YYYY format for date filter
+    filterDate = null;
+    if (filterDateInput.value.trim()) {
+      const match = filterDateInput.value.trim().match(/(\d{2})\.(\d{2})\.(\d{4})/);
+      if (match) {
+        const day = parseInt(match[1]);
+        const month = parseInt(match[2]);
+        filterDate = { day, month };
+      }
+    }
+
+    showLoading(true);
+    hideError();
+    hideResults();
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sheetName', sheetName);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process file');
+      }
+
+      const data = await response.json();
+      displayResults(data);
+      
+      // Load workbook for sheet selection
+      const buffer = await file.arrayBuffer();
+      currentWorkbook = window.XLSX.read(buffer, { type: 'array' });
+      allSheetNames = currentWorkbook.SheetNames;
+      
+      // Populate sheet selector dropdown
+      const selector = document.getElementById('sheetSelector');
+      selector.innerHTML = '<option value="">-- Select a sheet --</option>';
+      allSheetNames.forEach(sheetName => {
+        if (sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)) { // Exclude teacher sheet and only show date-formatted sheets
+          const option = document.createElement('option');
+          option.value = sheetName;
+          option.textContent = sheetName;
+          selector.appendChild(option);
+        }
+      });
+      
+      // Populate multi-sheet checkboxes
+      const checkboxContainer = document.getElementById('multiSheetCheckboxes');
+      checkboxContainer.innerHTML = '';
+      const dateFormattedSheets = allSheetNames.filter(sheetName => 
+        sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)
+      );
+      
+      // Hide select all label if no date sheets
+      const selectAllLabel = document.getElementById('selectAllLabel');
+      selectAllLabel.style.display = dateFormattedSheets.length > 0 ? 'flex' : 'none';
+      
+      // Reset select all checkbox
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      selectAllCheckbox.checked = false;
+      
+      dateFormattedSheets.forEach(sheetName => {
+        const label = document.createElement('label');
+        label.style.display = 'flex';
+        label.style.alignItems = 'center';
+        label.style.gap = '8px';
+        label.style.cursor = 'pointer';
+        label.style.margin = '0';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = sheetName;
+        checkbox.className = 'sheet-checkbox';
+        checkbox.style.cursor = 'pointer';
+        
+        const text = document.createElement('span');
+        text.textContent = sheetName;
+        
+        label.appendChild(checkbox);
+        label.appendChild(text);
+        checkboxContainer.appendChild(label);
+      });
+      
+      // Add select all functionality
+      selectAllCheckbox.addEventListener('change', (e) => {
+        const allCheckboxes = document.querySelectorAll('.sheet-checkbox');
+        allCheckboxes.forEach(cb => cb.checked = e.target.checked);
+      });
+      
+      // Update select all checkbox state when individual checkboxes change
+      document.querySelectorAll('.sheet-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', () => {
+          const allCheckboxes = document.querySelectorAll('.sheet-checkbox');
+          const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
+          const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
+          selectAllCheckbox.checked = allChecked;
+          selectAllCheckbox.indeterminate = someChecked && !allChecked;
+        });
+      });
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      showLoading(false);
+    }
+  });
 });
 
 function switchTab(tab) {
@@ -101,131 +227,6 @@ function switchTab(tab) {
     saveMultiPng.style.display = 'block';
   }
 }
-
-document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-
-  const fileInput = document.getElementById('file');
-  const sheetNameInput = document.getElementById('sheetName');
-  const filterDateInput = document.getElementById('filterDate');
-  const file = fileInput.files[0];
-  const sheetName = sheetNameInput.value || 'Lærervakter';
-
-  if (!file) {
-    showError('Please select a file');
-    return;
-  }
-
-  // Set filter date if provided
-  // Parse DD.MM.YYYY format for date filter
-  filterDate = null;
-  if (filterDateInput.value.trim()) {
-    const match = filterDateInput.value.trim().match(/(\d{2})\.(\d{2})\.(\d{4})/);
-    if (match) {
-      const day = parseInt(match[1]);
-      const month = parseInt(match[2]);
-      filterDate = { day, month };
-    }
-  }
-
-  showLoading(true);
-  hideError();
-  hideResults();
-
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('sheetName', sheetName);
-
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to process file');
-    }
-
-    const data = await response.json();
-    displayResults(data);
-    
-    // Load workbook for sheet selection
-    const buffer = await file.arrayBuffer();
-    currentWorkbook = window.XLSX.read(buffer, { type: 'array' });
-    allSheetNames = currentWorkbook.SheetNames;
-    
-    // Populate sheet selector dropdown
-    const selector = document.getElementById('sheetSelector');
-    selector.innerHTML = '<option value="">-- Select a sheet --</option>';
-    allSheetNames.forEach(sheetName => {
-      if (sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)) { // Exclude teacher sheet and only show date-formatted sheets
-        const option = document.createElement('option');
-        option.value = sheetName;
-        option.textContent = sheetName;
-        selector.appendChild(option);
-      }
-    });
-    
-    // Populate multi-sheet checkboxes
-    const checkboxContainer = document.getElementById('multiSheetCheckboxes');
-    checkboxContainer.innerHTML = '';
-    const dateFormattedSheets = allSheetNames.filter(sheetName => 
-      sheetName !== sheetNameInput.value && isDateFormattedSheet(sheetName)
-    );
-    
-    // Hide select all label if no date sheets
-    const selectAllLabel = document.getElementById('selectAllLabel');
-    selectAllLabel.style.display = dateFormattedSheets.length > 0 ? 'flex' : 'none';
-    
-    // Reset select all checkbox
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    selectAllCheckbox.checked = false;
-    
-    dateFormattedSheets.forEach(sheetName => {
-      const label = document.createElement('label');
-      label.style.display = 'flex';
-      label.style.alignItems = 'center';
-      label.style.gap = '8px';
-      label.style.cursor = 'pointer';
-      label.style.margin = '0';
-      
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.value = sheetName;
-      checkbox.className = 'sheet-checkbox';
-      checkbox.style.cursor = 'pointer';
-      
-      const text = document.createElement('span');
-      text.textContent = sheetName;
-      
-      label.appendChild(checkbox);
-      label.appendChild(text);
-      checkboxContainer.appendChild(label);
-    });
-    
-    // Add select all functionality
-    selectAllCheckbox.addEventListener('change', (e) => {
-      const allCheckboxes = document.querySelectorAll('.sheet-checkbox');
-      allCheckboxes.forEach(cb => cb.checked = e.target.checked);
-    });
-    
-    // Update select all checkbox state when individual checkboxes change
-    document.querySelectorAll('.sheet-checkbox').forEach(checkbox => {
-      checkbox.addEventListener('change', () => {
-        const allCheckboxes = document.querySelectorAll('.sheet-checkbox');
-        const allChecked = Array.from(allCheckboxes).every(cb => cb.checked);
-        const someChecked = Array.from(allCheckboxes).some(cb => cb.checked);
-        selectAllCheckbox.checked = allChecked;
-        selectAllCheckbox.indeterminate = someChecked && !allChecked;
-      });
-    });
-  } catch (error) {
-    showError(error.message);
-  } finally {
-    showLoading(false);
-  }
-});
 
 function showLoading(show) {
   const loading = document.getElementById('loading');
