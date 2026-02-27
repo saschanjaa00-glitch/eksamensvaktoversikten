@@ -411,7 +411,8 @@ function loadDateScheduleSheet(sheetName) {
     
     // Remove trailing empty rows
     while (fullTableData.length > 1) {
-      const lastRow = fullTableData[fullTableData.length - 1];\n      const lastRowFirstCell = lastRow[0];
+      const lastRow = fullTableData[fullTableData.length - 1];
+      const lastRowFirstCell = lastRow[0];
       if (!lastRowFirstCell || String(lastRowFirstCell).trim() === '') {
         fullTableData.pop();
       } else {
