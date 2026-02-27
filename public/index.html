@@ -37,14 +37,36 @@
 
     <div id="results" class="results" style="display: none;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <h2 style="margin: 0;">Teacher Schedules</h2>
+        <div style="display: flex; gap: 12px; align-items: center; flex: 1;">
+          <div style="display: flex; gap: 6px;">
+            <button id="tabTeacherBtn" class="tab-btn active" type="button">Teacher Schedule</button>
+            <button id="tabDateBtn" class="tab-btn" type="button">Schedule by Date</button>
+          </div>
+        </div>
         <div style="display: flex; gap: 8px;">
           <button id="exportPdfBtn" class="btn-export">📥 Export as PDF</button>
           <button id="copyOneNoteBtn" class="btn-export">📔 Copy to OneNote</button>
+          <button id="copyDateOneNoteBtn" class="btn-export" style="display: none;">📔 Copy to OneNote</button>
         </div>
       </div>
 
-      <div id="resultsContent"></div>
+      <div id="teacherTab" style="display: block;">
+        <div id="resultsContent"></div>
+      </div>
+
+      <div id="dateTab" style="display: none;">
+        <div class="form-group" style="margin-bottom: 16px; max-width: 300px;">
+          <label for="sheetSelector">Select Date/Sheet:</label>
+          <select id="sheetSelector" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem;">
+            <option value="">-- Select a sheet --</option>
+          </select>
+        </div>
+        <div id="dateTabContent" style="display: none;">
+          <div style="overflow-x: auto;">
+            <table id="dateScheduleTable" class="date-schedule-table" style="width: 100%; border-collapse: collapse;"></table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

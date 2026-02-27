@@ -1,6 +1,8 @@
 let currentTeachersData = [];
 let filterDate = null;
 let disabledDates = new Set();
+let currentWorkbook = null;
+let allSheetNames = [];
 
 // Initialize Flatpickr date picker
 window.addEventListener('load', () => {
@@ -10,7 +12,46 @@ window.addEventListener('load', () => {
     defaultDate: new Date(),
     locale: 'de'
   });
+  
+  // Tab button listeners
+  document.getElementById('tabTeacherBtn').addEventListener('click', () => switchTab('teacher'));
+  document.getElementById('tabDateBtn').addEventListener('click', () => switchTab('date'));
+  
+  // Sheet selector listener
+  document.getElementById('sheetSelector').addEventListener('change', (e) => {
+    if (e.target.value) {
+      loadDateScheduleSheet(e.target.value);
+    }
+  });
 });
+
+function switchTab(tab) {
+  const teacherBtn = document.getElementById('tabTeacherBtn');
+  const dateBtn = document.getElementById('tabDateBtn');
+  const teacherTab = document.getElementById('teacherTab');
+  const dateTab = document.getElementById('dateTab');
+  const exportPdf = document.getElementById('exportPdfBtn');
+  const copyOneNote = document.getElementById('copyOneNoteBtn');
+  const copyDateOneNote = document.getElementById('copyDateOneNoteBtn');
+  
+  if (tab === 'teacher') {
+    teacherBtn.classList.add('active');
+    dateBtn.classList.remove('active');
+    teacherTab.style.display = 'block';
+    dateTab.style.display = 'none';
+    exportPdf.style.display = 'block';
+    copyOneNote.style.display = 'block';
+    copyDateOneNote.style.display = 'none';
+  } else {
+    teacherBtn.classList.remove('active');
+    dateBtn.classList.add('active');
+    teacherTab.style.display = 'none';
+    dateTab.style.display = 'block';
+    exportPdf.style.display = 'none';
+    copyOneNote.style.display = 'none';
+    copyDateOneNote.style.display = 'block';
+  }
+}
 
 document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -59,6 +100,23 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
 
     const data = await response.json();
     displayResults(data);
+    
+    // Load workbook for sheet selection
+    const buffer = await file.arrayBuffer();
+    currentWorkbook = window.XLSX.read(buffer, { type: 'array' });
+    allSheetNames = currentWorkbook.SheetNames;
+    
+    // Populate sheet selector dropdown
+    const selector = document.getElementById('sheetSelector');
+    selector.innerHTML = '<option value="">-- Select a sheet --</option>';
+    allSheetNames.forEach(sheetName => {
+      if (sheetName !== sheetNameInput.value) { // Exclude the teacher schedule sheet
+        const option = document.createElement('option');
+        option.value = sheetName;
+        option.textContent = sheetName;
+        selector.appendChild(option);
+      }
+    });
   } catch (error) {
     showError(error.message);
   } finally {
@@ -166,6 +224,75 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function loadDateScheduleSheet(sheetName) {
+  if (!currentWorkbook) {
+    alert('No workbook loaded.');
+    return;
+  }
+  
+  const worksheet = currentWorkbook.Sheets[sheetName];
+  if (!worksheet) {
+    alert('Sheet not found.');
+    return;
+  }
+  
+  // Read the data starting from B6
+  // Get raw data to preserve values
+  const range = worksheet['!ref'];
+  const data = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+  
+  // Extract data from B6 to H6 and down
+  // Row 6 is index 5 (0-based), columns B-H are indices 1-7
+  const tableData = [];
+  
+  if (data.length > 5) {
+    // Get headers from row 6 (B6 to H6)
+    const headerRow = data[5];
+    const headers = headerRow.slice(1, 8); // B6 to H6 (indices 1-7)
+    tableData.push(headers);
+    
+    // Get data rows starting from row 7
+    for (let i = 6; i < data.length; i++) {
+      const row = data[i];
+      if (row && row.length > 1) {
+        const firstCell = row[0]; // Column A
+        if (!firstCell || String(firstCell).trim() === '') break; // Stop at empty row
+        
+        // Get cells B to H
+        const rowData = row.slice(1, 8);
+        tableData.push(rowData);
+      } else {
+        break;
+      }
+    }
+  }
+  
+  // Render the table
+  const table = document.getElementById('dateScheduleTable');
+  let html = '';
+  
+  tableData.forEach((row, rowIdx) => {
+    const isHeader = rowIdx === 0;
+    const bgColor = !isHeader && rowIdx % 2 === 0 ? 'white' : '#f5f5f5';
+    const cellTag = isHeader ? 'th' : 'td';
+    const style = isHeader 
+      ? 'style="background-color: #667eea; color: white; font-weight: bold; padding: 8px; border: 1px solid #ddd;"'
+      : `style="padding: 8px; border: 1px solid #ddd; background-color: ${bgColor};"`;
+    
+    html += '<tr>';
+    row.forEach(cell => {
+      html += `<${cellTag} ${style}>${escapeHtml(String(cell || ''))}</${cellTag}>`;
+    });
+    html += '</tr>';
+  });
+  
+  table.innerHTML = html;
+  document.getElementById('dateTabContent').style.display = 'block';
+  
+  // Store the table data for copying
+  window.currentDateTableData = tableData;
+}
+
 document.getElementById('copyOneNoteBtn').addEventListener('click', async () => {
   if (!currentTeachersData || currentTeachersData.length === 0) {
     alert('No data to copy. Please upload a file first.');
@@ -223,6 +350,50 @@ document.getElementById('copyOneNoteBtn').addEventListener('click', async () => 
         const datesText = dates.join(' | ');
         textTable += `${teacher.name}\t${datesText}\n`;
       });
+      await navigator.clipboard.writeText(textTable);
+      alert('Table copied to clipboard (as text)! Paste it into OneNote using Ctrl+V');
+    } catch (fallbackError) {
+      alert('Error copying to clipboard: ' + error.message);
+    }
+  }
+});
+
+document.getElementById('copyDateOneNoteBtn').addEventListener('click', async () => {
+  if (!window.currentDateTableData || window.currentDateTableData.length === 0) {
+    alert('No data to copy. Please select a sheet first.');
+    return;
+  }
+
+  try {
+    // Build HTML table
+    let html = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">';
+    
+    window.currentDateTableData.forEach((row, rowIdx) => {
+      const isHeader = rowIdx === 0;
+      const bgColor = isHeader ? '#667eea' : (rowIdx % 2 === 0 ? 'white' : '#f5f5f5');
+      const textColor = isHeader ? 'white' : 'black';
+      const fontWeight = isHeader ? 'bold' : 'normal';
+      
+      html += `<tr style="background-color: ${bgColor}; color: ${textColor};">`;
+      row.forEach(cell => {
+        const cellTag = isHeader ? 'th' : 'td';
+        html += `<${cellTag} style="font-weight: ${fontWeight}; padding: 8px; border: 1px solid #ddd;">${escapeHtml(String(cell || ''))}</${cellTag}>`;
+      });
+      html += '</tr>';
+    });
+    
+    html += '</table>';
+
+    // Copy as HTML to clipboard
+    const blob = new Blob([html], { type: 'text/html' });
+    const data = [new ClipboardItem({ 'text/html': blob })];
+    await navigator.clipboard.write(data);
+    alert('Table copied to clipboard! Paste it into OneNote using Ctrl+V');
+  } catch (error) {
+    console.error('Error copying to clipboard:', error);
+    // Fallback: try copying as text
+    try {
+      let textTable = window.currentDateTableData.map(row => row.join('\t')).join('\n');
       await navigator.clipboard.writeText(textTable);
       alert('Table copied to clipboard (as text)! Paste it into OneNote using Ctrl+V');
     } catch (fallbackError) {
