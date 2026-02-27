@@ -41,12 +41,14 @@
           <div style="display: flex; gap: 6px;">
             <button id="tabTeacherBtn" class="tab-btn active" type="button">Teacher Schedule</button>
             <button id="tabDateBtn" class="tab-btn" type="button">Schedule by Date</button>
+            <button id="tabMultiBtn" class="tab-btn" type="button">Multi-Sheet Export</button>
           </div>
         </div>
         <div style="display: flex; gap: 8px;">
           <button id="exportPdfBtn" class="btn-export">📥 Export as PDF</button>
           <button id="copyOneNoteBtn" class="btn-export">📔 Copy to OneNote</button>
           <button id="copyDateOneNoteBtn" class="btn-export" style="display: none;">📔 Copy to OneNote</button>
+          <button id="copyMultiOneNoteBtn" class="btn-export" style="display: none;">📔 Copy to OneNote</button>
         </div>
       </div>
 
@@ -64,6 +66,20 @@
         <div id="dateTabContent" style="display: none;">
           <div style="overflow-x: auto;">
             <table id="dateScheduleTable" class="date-schedule-table" style="width: 100%; border-collapse: collapse;"></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="multiTab" style="display: none;">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label>Select Sheets to Include:</label>
+          <div id="multiSheetCheckboxes" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 12px; border: 1px solid #ddd; border-radius: 6px;">
+          </div>
+          <button id="loadMultiSheetsBtn" class="btn-export" style="margin-top: 12px; width: 100%;">Load Selected Sheets</button>
+        </div>
+        <div id="multiTabContent" style="display: none; margin-top: 16px;">
+          <div style="overflow-x: auto;">
+            <table id="multiScheduleTable" class="date-schedule-table" style="width: 100%; border-collapse: collapse;"></table>
           </div>
         </div>
       </div>

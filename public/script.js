@@ -17,39 +17,60 @@ window.addEventListener('load', () => {
   document.getElementById('tabTeacherBtn').addEventListener('click', () => switchTab('teacher'));
   document.getElementById('tabDateBtn').addEventListener('click', () => switchTab('date'));
   
+  // Tab button listeners
+  document.getElementById('tabTeacherBtn').addEventListener('click', () => switchTab('teacher'));
+  document.getElementById('tabDateBtn').addEventListener('click', () => switchTab('date'));
+  document.getElementById('tabMultiBtn').addEventListener('click', () => switchTab('multi'));
+  
   // Sheet selector listener
   document.getElementById('sheetSelector').addEventListener('change', (e) => {
     if (e.target.value) {
       loadDateScheduleSheet(e.target.value);
     }
   });
+  
+  // Multi-sheet loader listener
+  document.getElementById('loadMultiSheetsBtn').addEventListener('click', loadMultipleSheets);
 });
 
 function switchTab(tab) {
   const teacherBtn = document.getElementById('tabTeacherBtn');
   const dateBtn = document.getElementById('tabDateBtn');
+  const multiBtn = document.getElementById('tabMultiBtn');
   const teacherTab = document.getElementById('teacherTab');
   const dateTab = document.getElementById('dateTab');
+  const multiTab = document.getElementById('multiTab');
   const exportPdf = document.getElementById('exportPdfBtn');
   const copyOneNote = document.getElementById('copyOneNoteBtn');
   const copyDateOneNote = document.getElementById('copyDateOneNoteBtn');
+  const copyMultiOneNote = document.getElementById('copyMultiOneNoteBtn');
   
+  // Reset all
+  teacherBtn.classList.remove('active');
+  dateBtn.classList.remove('active');
+  multiBtn.classList.remove('active');
+  teacherTab.style.display = 'none';
+  dateTab.style.display = 'none';
+  multiTab.style.display = 'none';
+  exportPdf.style.display = 'none';
+  copyOneNote.style.display = 'none';
+  copyDateOneNote.style.display = 'none';
+  copyMultiOneNote.style.display = 'none';
+  
+  // Set active tab
   if (tab === 'teacher') {
     teacherBtn.classList.add('active');
-    dateBtn.classList.remove('active');
     teacherTab.style.display = 'block';
-    dateTab.style.display = 'none';
     exportPdf.style.display = 'block';
     copyOneNote.style.display = 'block';
-    copyDateOneNote.style.display = 'none';
-  } else {
-    teacherBtn.classList.remove('active');
+  } else if (tab === 'date') {
     dateBtn.classList.add('active');
-    teacherTab.style.display = 'none';
     dateTab.style.display = 'block';
-    exportPdf.style.display = 'none';
-    copyOneNote.style.display = 'none';
     copyDateOneNote.style.display = 'block';
+  } else if (tab === 'multi') {
+    multiBtn.classList.add('active');
+    multiTab.style.display = 'block';
+    copyMultiOneNote.style.display = 'block';
   }
 }
 
@@ -115,6 +136,32 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
         option.value = sheetName;
         option.textContent = sheetName;
         selector.appendChild(option);
+      }
+    });
+    
+    // Populate multi-sheet checkboxes
+    const checkboxContainer = document.getElementById('multiSheetCheckboxes');
+    checkboxContainer.innerHTML = '';
+    allSheetNames.forEach(sheetName => {
+      if (sheetName !== sheetNameInput.value) { // Exclude the teacher schedule sheet
+        const label = document.createElement('label');
+        label.style.display = 'flex';
+        label.style.alignItems = 'center';
+        label.style.gap = '8px';
+        label.style.cursor = 'pointer';
+        label.style.margin = '0';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = sheetName;
+        checkbox.style.cursor = 'pointer';
+        
+        const text = document.createElement('span');
+        text.textContent = sheetName;
+        
+        label.appendChild(checkbox);
+        label.appendChild(text);
+        checkboxContainer.appendChild(label);
       }
     });
   } catch (error) {
@@ -241,26 +288,56 @@ function loadDateScheduleSheet(sheetName) {
   const range = worksheet['!ref'];
   const data = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
   
-  // Extract data from B6 to H6 and down
-  // Row 6 is index 5 (0-based), columns B-H are indices 1-7
+  // Extract data from A6 to H6 and down
+  // Row 6 is index 5 (0-based), columns A-H are indices 0-7
   const tableData = [];
   
   if (data.length > 5) {
-    // Get headers from row 6 (B6 to H6)
+    // Get headers from row 6 (A6 to H6)
     const headerRow = data[5];
-    const headers = headerRow.slice(1, 8); // B6 to H6 (indices 1-7)
+    const headers = headerRow.slice(0, 8); // A6 to H6 (indices 0-7)
     tableData.push(headers);
     
     // Get data rows starting from row 7
+    // Collect rows but look ahead for content after empty rows
+    let emptyRowCount = 0;
     for (let i = 6; i < data.length; i++) {
       const row = data[i];
-      if (row && row.length > 1) {
-        const firstCell = row[0]; // Column A
-        if (!firstCell || String(firstCell).trim() === '') break; // Stop at empty row
-        
-        // Get cells B to H
-        const rowData = row.slice(1, 8);
+      const firstCell = row && row.length > 0 ? row[0] : '';
+      const hasContent = firstCell && String(firstCell).trim() !== '';
+      
+      if (hasContent) {
+        // Found content, reset empty row counter
+        emptyRowCount = 0;
+        // Get cells A to H
+        const rowData = row.slice(0, 8);
         tableData.push(rowData);
+      } else {
+        // Empty row - increment counter but keep looking
+        emptyRowCount++;
+        // Only stop if we've had 5 consecutive empty rows with no more content ahead
+        if (emptyRowCount >= 5) {
+          // Check if there's any content in the next few rows
+          let foundContentAhead = false;
+          for (let j = i + 1; j < Math.min(i + 6, data.length); j++) {
+            const aheadRow = data[j];
+            const aheadFirstCell = aheadRow && aheadRow.length > 0 ? aheadRow[0] : '';
+            if (aheadFirstCell && String(aheadFirstCell).trim() !== '') {
+              foundContentAhead = true;
+              break;
+            }
+          }
+          if (!foundContentAhead) break;
+        }
+      }
+    }
+    
+    // Remove trailing empty rows
+    while (tableData.length > 1) {
+      const lastRow = tableData[tableData.length - 1];
+      const lastRowFirstCell = lastRow[0];
+      if (!lastRowFirstCell || String(lastRowFirstCell).trim() === '') {
+        tableData.pop();
       } else {
         break;
       }
@@ -273,11 +350,10 @@ function loadDateScheduleSheet(sheetName) {
   
   tableData.forEach((row, rowIdx) => {
     const isHeader = rowIdx === 0;
-    const bgColor = !isHeader && rowIdx % 2 === 0 ? 'white' : '#f5f5f5';
     const cellTag = isHeader ? 'th' : 'td';
     const style = isHeader 
-      ? 'style="background-color: #667eea; color: white; font-weight: bold; padding: 8px; border: 1px solid #ddd;"'
-      : `style="padding: 8px; border: 1px solid #ddd; background-color: ${bgColor};"`;
+      ? 'style="font-weight: bold; padding: 8px; border: 1px solid #000; white-space: nowrap;"'
+      : 'style="padding: 8px; border: 1px solid #000; white-space: nowrap;"';
     
     html += '<tr>';
     row.forEach(cell => {
@@ -291,6 +367,108 @@ function loadDateScheduleSheet(sheetName) {
   
   // Store the table data for copying
   window.currentDateTableData = tableData;
+}
+
+function loadMultipleSheets() {
+  if (!currentWorkbook) {
+    alert('No workbook loaded.');
+    return;
+  }
+  
+  // Get all checked sheets
+  const checkedBoxes = Array.from(document.querySelectorAll('#multiSheetCheckboxes input[type="checkbox"]:checked'));
+  if (checkedBoxes.length === 0) {
+    alert('Please select at least one sheet.');
+    return;
+  }
+  
+  const sheetNames = checkedBoxes.map(checkbox => checkbox.value);
+  const combinedData = [];
+  
+  // Load data from each selected sheet
+  sheetNames.forEach(sheetName => {
+    const worksheet = currentWorkbook.Sheets[sheetName];
+    if (worksheet) {
+      const data = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+      
+      // Extract data from A6 to H6 and down
+      if (data.length > 5) {
+        const headerRow = data[5];
+        const headers = headerRow.slice(0, 8);
+        
+        // Add sheet name as a header separator
+        combinedData.push([sheetName, '', '', '', '', '', '', '']);
+        combinedData.push(headers);
+        
+        // Get data rows
+        let emptyRowCount = 0;
+        for (let i = 6; i < data.length; i++) {
+          const row = data[i];
+          const firstCell = row && row.length > 0 ? row[0] : '';
+          const hasContent = firstCell && String(firstCell).trim() !== '';
+          
+          if (hasContent) {
+            emptyRowCount = 0;
+            const rowData = row.slice(0, 8);
+            combinedData.push(rowData);
+          } else {
+            emptyRowCount++;
+            if (emptyRowCount >= 5) {
+              let foundContentAhead = false;
+              for (let j = i + 1; j < Math.min(i + 6, data.length); j++) {
+                const aheadRow = data[j];
+                const aheadFirstCell = aheadRow && aheadRow.length > 0 ? aheadRow[0] : '';
+                if (aheadFirstCell && String(aheadFirstCell).trim() !== '') {
+                  foundContentAhead = true;
+                  break;
+                }
+              }
+              if (!foundContentAhead) break;
+            }
+          }
+        }
+      }
+    }
+  });
+  
+  // Remove trailing empty rows
+  while (combinedData.length > 0) {
+    const lastRow = combinedData[combinedData.length - 1];
+    const lastRowFirstCell = lastRow[0];
+    if (!lastRowFirstCell || String(lastRowFirstCell).trim() === '') {
+      combinedData.pop();
+    } else {
+      break;
+    }
+  }
+  
+  // Render the table
+  const table = document.getElementById('multiScheduleTable');
+  let html = '';
+  
+  combinedData.forEach((row, rowIdx) => {
+    const isSheetHeader = rowIdx > 0 && combinedData[rowIdx - 1] && String(combinedData[rowIdx - 1][0]).trim() !== '' && 
+                         row[0] && allSheetNames.includes(String(row[0]));
+    const isColumnHeader = !isSheetHeader && combinedData.length > rowIdx - 1 && 
+                          combinedData[rowIdx - 1] && allSheetNames.includes(String(combinedData[rowIdx - 1][0]));
+    
+    const cellTag = (isSheetHeader || isColumnHeader) ? 'th' : 'td';
+    const style = (isSheetHeader || isColumnHeader)
+      ? 'style="font-weight: bold; padding: 8px; border: 1px solid #000; white-space: nowrap;"'
+      : 'style="padding: 8px; border: 1px solid #000; white-space: nowrap;"';
+    
+    html += '<tr>';
+    row.forEach(cell => {
+      html += `<${cellTag} ${style}>${escapeHtml(String(cell || ''))}</${cellTag}>`;
+    });
+    html += '</tr>';
+  });
+  
+  table.innerHTML = html;
+  document.getElementById('multiTabContent').style.display = 'block';
+  
+  // Store the table data for copying
+  window.currentMultiTableData = combinedData;
 }
 
 document.getElementById('copyOneNoteBtn').addEventListener('click', async () => {
@@ -394,6 +572,56 @@ document.getElementById('copyDateOneNoteBtn').addEventListener('click', async ()
     // Fallback: try copying as text
     try {
       let textTable = window.currentDateTableData.map(row => row.join('\t')).join('\n');
+      await navigator.clipboard.writeText(textTable);
+      alert('Table copied to clipboard (as text)! Paste it into OneNote using Ctrl+V');
+    } catch (fallbackError) {
+      alert('Error copying to clipboard: ' + error.message);
+    }
+  }
+});
+
+document.getElementById('copyMultiOneNoteBtn').addEventListener('click', async () => {
+  if (!window.currentMultiTableData || window.currentMultiTableData.length === 0) {
+    alert('No data to copy. Please load sheets first.');
+    return;
+  }
+
+  try {
+    // Build HTML table
+    let html = '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">';
+    
+    window.currentMultiTableData.forEach((row, rowIdx) => {
+      const isSheetHeader = rowIdx > 0 && window.currentMultiTableData[rowIdx - 1] && 
+                           String(window.currentMultiTableData[rowIdx - 1][0]).trim() !== '' && 
+                           row[0] && allSheetNames.includes(String(row[0]));
+      const isColumnHeader = !isSheetHeader && window.currentMultiTableData.length > rowIdx - 1 && 
+                            window.currentMultiTableData[rowIdx - 1] && 
+                            allSheetNames.includes(String(window.currentMultiTableData[rowIdx - 1][0]));
+      
+      const bgColor = (isSheetHeader || isColumnHeader) ? '#000' : 'white';
+      const textColor = (isSheetHeader || isColumnHeader) ? 'white' : 'black';
+      const fontWeight = (isSheetHeader || isColumnHeader) ? 'bold' : 'normal';
+      
+      html += `<tr style="background-color: ${bgColor}; color: ${textColor};">`;
+      row.forEach(cell => {
+        const cellTag = (isSheetHeader || isColumnHeader) ? 'th' : 'td';
+        html += `<${cellTag} style="font-weight: ${fontWeight}; padding: 8px; border: 1px solid #ddd;">${escapeHtml(String(cell || ''))}</${cellTag}>`;
+      });
+      html += '</tr>';
+    });
+    
+    html += '</table>';
+
+    // Copy as HTML to clipboard
+    const blob = new Blob([html], { type: 'text/html' });
+    const data = [new ClipboardItem({ 'text/html': blob })];
+    await navigator.clipboard.write(data);
+    alert('Table copied to clipboard! Paste it into OneNote using Ctrl+V');
+  } catch (error) {
+    console.error('Error copying to clipboard:', error);
+    // Fallback: try copying as text
+    try {
+      let textTable = window.currentMultiTableData.map(row => row.join('\t')).join('\n');
       await navigator.clipboard.writeText(textTable);
       alert('Table copied to clipboard (as text)! Paste it into OneNote using Ctrl+V');
     } catch (fallbackError) {

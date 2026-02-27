@@ -278,26 +278,28 @@ input[type="text"]:focus {
 /* Date schedule table */
 .date-schedule-table {
   border-collapse: collapse;
-  width: 100%;
+  min-width: 100%;
 }
 
 .date-schedule-table th,
 .date-schedule-table td {
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid #000;
   text-align: left;
+  white-space: nowrap;
 }
 
 .date-schedule-table th {
-  background-color: #667eea;
-  color: white;
   font-weight: bold;
 }
 
-.date-schedule-table tr:nth-child(even) {
-  background-color: #f5f5f5;
+#dateTabContent {
+  overflow-x: auto;
+  overflow-y: auto;
+  width: 100%;
+  max-height: 600px;
 }
 
-.date-schedule-table tr:nth-child(odd) {
-  background-color: white;
+#dateTabContent > * {
+  min-width: max-content;
 }
