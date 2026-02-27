@@ -23,7 +23,7 @@
         </div>
         <div class="form-group">
           <label for="filterDate">Filter from date (optional):</label>
-          <input type="date" id="filterDate" name="filterDate">
+          <input type="text" id="filterDate" name="filterDate" placeholder="DD.MM.YYYY">
         </div>
         <button type="submit" class="btn-upload">Upload & Process</button>
       </form>
@@ -44,26 +44,13 @@
         </div>
       </div>
 
-      <div class="tab-bar">
-        <button id="tabScheduleBtn" class="tab-btn active" type="button">Schedule</button>
-        <button id="tabEditorBtn" class="tab-btn" type="button">Sheet Editor</button>
-      </div>
-
-      <div id="scheduleTab" class="tab-panel">
-        <div id="resultsContent"></div>
-      </div>
-
-      <div id="editorTab" class="tab-panel" style="display: none;">
-        <div class="editor-toolbar">
-          <p>Edit cells directly in the table below, then download the updated file.</p>
-          <button id="downloadEditedBtn" class="btn-export" type="button">💾 Download Edited Excel</button>
-        </div>
-        <div id="sheetEditorContainer" class="sheet-editor-container"></div>
-      </div>
+      <div id="resultsContent"></div>
     </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="script.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>

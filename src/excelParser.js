@@ -63,8 +63,26 @@ export function parseExcelFile(filePath, sheetName) {
         dates: dates
           .filter(d => d !== undefined && d !== null && d.toString().trim() !== '')
           .map(d => {
-            // Replace A and B with time ranges in parentheses
             let dateStr = d.toString();
+            
+            // If it's a Date object, format it as DD.MM.YYYY
+            if (d instanceof Date) {
+              const day = String(d.getDate()).padStart(2, '0');
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const year = d.getFullYear();
+              dateStr = `${day}.${month}.${year}`;
+            } else if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+              // Convert US format (MM/DD/YYYY) to European format (DD.MM.YYYY)
+              const parts = dateStr.split('/');
+              if (parts.length >= 3) {
+                const month = parts[0];
+                const day = parts[1];
+                const year = parts[2];
+                dateStr = `${day}.${month}.${year}` + dateStr.substring(dateStr.indexOf(' '));
+              }
+            }
+            
+            // Replace A and B with time ranges in parentheses
             dateStr = dateStr.replace(/ A\b/, ' (08.30-11.45)');
             dateStr = dateStr.replace(/ B\b/, ' (11.45-15.00)');
             return dateStr;
